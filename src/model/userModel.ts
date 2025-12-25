@@ -1,8 +1,8 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { IUser, Role } from "../types/users.Types";
 
-export interface IuserDocuments extends IUser, Document { }
-const userSchema: Schema<IuserDocuments> = new Schema(
+export interface IUserDocument extends IUser { }
+const userSchema: Schema<IUserDocument> = new Schema(
     {
         name: {
             type: String,
@@ -29,4 +29,4 @@ const userSchema: Schema<IuserDocuments> = new Schema(
     }
     , { timestamps: true })
 
-export const User: Model<IuserDocuments> = mongoose.model<IuserDocuments>('User', userSchema) 
+export const User: Model<IUserDocument> = mongoose.model<IUserDocument>('User', userSchema) 
