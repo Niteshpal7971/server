@@ -9,7 +9,7 @@ import { PasswordUtils } from "../utils/password.utils"
 class DatabaseServices {
     async findUserByEmail(email: string): Promise<IUser | null> {
         try {
-            return await User.findOne({ email })
+            return await User.findOne({ email }).select("+password")
         } catch (error: any) {
             logger.error("Error finding User by email", error.message);
             throw new Error("Error finding User by email", error.message)
@@ -98,7 +98,7 @@ export class Authservice {
         // verify password
         const verifyPassword = await PasswordUtils.verifyPassword(password, user.password);
         if (!verifyPassword) {
-            throw new Error(`Invalid password`)
+            throw new Error("Invalid password")
         }
 
         // Generate Token 
