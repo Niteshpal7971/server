@@ -1,7 +1,8 @@
 import { logger } from "../utils/logger";
 import { Students } from "../model/studentModel";
 import { IStudent } from "../types/cards.Types";
-import XLSX from "xlsx";
+import { stringify } from "csv-stringify/sync";
+
 import mongoose, { HydratedDocument } from "mongoose";
 
 export class StudentDatabaseServices {
@@ -122,27 +123,98 @@ export class StudentServices {
         return await this.studentDb.deleteByClass(classId);
     }
 
-    // ✅ Bulk Add Students (Excel Import)
-    async bulkAddStudents(classId: string, studentsData: Partial<IStudent>[]) {
-
-        if (!classId) throw new Error("Class ID missing in import");
-
-        // Map classId and remove blank rows
-        const finalData = studentsData
-            .filter(st => st.firstName && st.rollNumber) // remove garbage rows
-            .map(st => ({
-                ...st,
-                classId: new mongoose.Types.ObjectId(classId)
-            }));
-
-        // Avoid duplicate roll numbers inside import
-        const rollNumbers = finalData.map(st => st.rollNumber);
-        const duplicates = rollNumbers.filter((r, i) => rollNumbers.indexOf(r) !== i);
-        if (duplicates.length > 0) {
-            throw new Error(`Duplicate roll numbers found in uploaded sheet: ${duplicates.join(", ")}`);
+    async bulkAddStudents(
+        classId: string,
+        studentsData: Partial<IStudent>[]
+    ) {
+        if (!classId) {
+            throw new Error("Class ID missing in import");
         }
 
-        return await Students.insertMany(finalData);
+        if (!Array.isArray(studentsData) || studentsData.length === 0) {
+            throw new Error("Student data is empty");
+        }
+
+        // ✅ Normalize CSV rows → match schema
+        const finalData = studentsData
+            .filter(st =>
+                st.firstName &&
+                st.lastName &&
+                st.rollNumber &&
+                st.age &&
+                st.gender &&
+                st.contactNumber
+            )
+            .map(st => ({
+                firstName: String(st.firstName).trim(),
+                middleName: st.middleName ? String(st.middleName).trim() : undefined,
+                lastName: String(st.lastName).trim(),
+
+                rollNumber: String(st.rollNumber)
+                    .trim()
+                    .toUpperCase(), // ✅ schema requires uppercase
+
+                age: Number(st.age), // ✅ CSV → number
+
+                gender: String(st.gender).trim() as "Male" | "Female" | "Other",
+
+                guardianName: st.guardianName
+                    ? String(st.guardianName).trim()
+                    : undefined,
+
+                contactNumber: String(st.contactNumber).trim(),
+
+                avatar: st.avatar ? String(st.avatar).trim() : undefined,
+
+                classId: new mongoose.Types.ObjectId(classId),
+            }));
+
+        if (finalData.length === 0) {
+            throw new Error("No valid student rows found in CSV");
+        }
+
+        // ❌ Invalid age check
+        const invalidAge = finalData.find(st => !Number.isInteger(st.age));
+        if (invalidAge) {
+            throw new Error("Age must be a valid integer in CSV file");
+        }
+
+        // ❌ Invalid gender check
+        const allowedGenders = ["Male", "Female", "Other"];
+        const invalidGender = finalData.find(
+            st => !allowedGenders.includes(st.gender)
+        );
+        if (invalidGender) {
+            throw new Error("Invalid gender found. Allowed: Male, Female, Other");
+        }
+
+        // ❌ Duplicate rollNumber inside CSV
+        const rollNumbers = finalData.map(st => st.rollNumber);
+        const duplicates = rollNumbers.filter(
+            (r, i) => rollNumbers.indexOf(r) !== i
+        );
+
+        if (duplicates.length > 0) {
+            throw new Error(
+                `Duplicate roll numbers found in CSV: ${[...new Set(duplicates)].join(", ")}`
+            );
+        }
+
+        // ❌ Duplicate rollNumber in DB
+        const existing = await Students.find({
+            rollNumber: { $in: rollNumbers },
+        }).select("rollNumber");
+
+        if (existing.length > 0) {
+            throw new Error(
+                `Roll numbers already exist in DB: ${existing
+                    .map(s => s.rollNumber)
+                    .join(", ")}`
+            );
+        }
+
+        // ✅ Insert safely
+        return await Students.insertMany(finalData, { ordered: false });
     }
 
     // ✅ Get All Students by Class ID
@@ -152,23 +224,32 @@ export class StudentServices {
 
     // ✅ Export Excel File
     async exportStudentsToExcel(classId: string) {
+        if (!classId) {
+            throw new Error("Class ID is required");
+        }
+
         const students = await this.getStudentsByClass(classId);
 
-        const formatted = students.map(st => ({
+        if (!students || students.length === 0) {
+            throw new Error("No students found for this class");
+        }
+
+        const records = students.map(st => ({
             firstName: st.firstName,
-            middleName: st.middleName,
+            middleName: st.middleName || "",
             lastName: st.lastName,
             rollNumber: st.rollNumber,
             age: st.age,
             gender: st.gender,
-            guardianName: st.guardianName,
+            guardianName: st.guardianName || "",
             contactNumber: st.contactNumber
         }));
 
-        const worksheet = XLSX.utils.json_to_sheet(formatted);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+        const csv = stringify(records, {
+            header: true
+        });
 
-        return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        return Buffer.from(csv);
     }
+
 }

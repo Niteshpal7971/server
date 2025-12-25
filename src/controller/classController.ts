@@ -1,7 +1,8 @@
 import { ClassServices } from "../services/classServices";
 import { Request, Response, NextFunction } from "express";
 import { StudentServices } from "../services/studentServicces";
-import * as XLSX from "xlsx";
+import { parse } from "csv-parse";
+import { Readable } from "stream";
 // import { logger } from "../utils/logger";
 
 export class ClassController {
@@ -84,30 +85,46 @@ export class ClassController {
         try {
             const { classId } = req.params;
 
+            if (!classId) {
+                return res.status(400).json({ message: "ClassId is required" });
+            }
+
             if (!req.file) {
-                return res.status(400).json({ message: "File is required" });
+                return res.status(400).json({ message: "CSV file is required" });
             }
 
-            const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+            const students: any[] = [];
 
-            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                return res.status(400).json({ message: "Invalid Excel file" });
+            await new Promise<void>((resolve, reject) => {
+                Readable.from(req.file!.buffer)
+                    .pipe(
+                        parse({
+                            columns: true,          // first row = headers
+                            skip_empty_lines: true,
+                            trim: true,
+                            relax_quotes: true,
+                            relax_column_count: true,
+                        })
+                    )
+                    .on("data", (row) => {
+                        students.push(row);
+                    })
+                    .on("end", () => resolve())
+                    .on("error", (err) => reject(err));
+            });
+
+            if (students.length === 0) {
+                return res.status(400).json({ message: "CSV file is empty" });
             }
 
-            // ✅ Fix: Explicitly assert sheetName as string
-            const sheetName = workbook.SheetNames[0] as string;
+            await this.studentService.bulkAddStudents(classId, students);
 
-            // ✅ Fix: Also assert worksheet exists
-            const sheet = workbook.Sheets[sheetName];
-            if (!sheet) {
-                return res.status(400).json({ message: "Worksheet not found in the uploaded file" });
-            }
+            return res.status(201).json({
+                success: true,
+                message: "Students imported successfully",
+                total: students.length
+            });
 
-            const rows = XLSX.utils.sheet_to_json(sheet);
-
-            await this.studentService.bulkAddStudents(classId as string, rows as any[]);
-
-            return res.status(201).json({ message: "Students imported successfully" });
         } catch (error: any) {
             return res.status(500).json({ message: error.message });
         }
@@ -117,14 +134,23 @@ export class ClassController {
     exportStudents = async (req: Request, res: Response) => {
         try {
             const { classId } = req.params;
-            const excelBuffer = await this.studentService.exportStudentsToExcel(classId as string);
 
-            res.setHeader("Content-Disposition", "attachment; filename=students.xlsx");
-            res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            const excelBuffer =
+                await this.studentService.exportStudentsToExcel(classId as string);
+
+            res.setHeader(
+                "Content-Disposition",
+                "attachment; filename=students.xlsx"
+            );
+            res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            );
 
             res.send(excelBuffer);
         } catch (error: any) {
             res.status(500).json({ success: false, message: error.message });
         }
     };
+
 }
