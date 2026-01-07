@@ -6,9 +6,18 @@ const studentService = new StudentServices();
 export class StudentController {
     async createStudent(req: Request, res: Response) {
         try {
-            const classId: any = req.params.id
-            const school = await studentService.createStudent(classId, req.body);
-            res.status(201).json({ message: "School created", school });
+            const classId = req.params.id;
+            const studentData = { ...req.body };
+
+            if (req.file) {
+                studentData.image = {
+                    data: req.file.buffer,
+                    contentType: req.file.mimetype
+                };
+            }
+
+            const student = await studentService.createStudent(classId || "", studentData);
+            res.status(201).json({ message: "Student created", student });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
         }

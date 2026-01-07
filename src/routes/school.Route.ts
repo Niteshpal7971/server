@@ -30,7 +30,7 @@ router.get("/:classId/export", classController.exportStudents);
 
 // Student Route
 
-router.post('/:id/create-student', validateFields(createStudentSchema), studentController.createStudent)
+router.post('/:id/create-student', upload.single('image'), validateFields(createStudentSchema), studentController.createStudent)
 router.get("/students", studentController.getAllStudents);
 router.get("/students/:studentId", studentController.getStudentById);
 router.put("/students/:studentId", validateFields(updateStudentSchema), studentController.updateStudent);

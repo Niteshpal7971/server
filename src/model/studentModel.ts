@@ -12,6 +12,10 @@ export interface IStudent extends Document {
     guardianName?: string;
     contactNumber: string;
     classId: mongoose.Types.ObjectId;
+    image?: {
+        data: Buffer;
+        contentType: string;
+    };
     createdAt?: Date;
     updatedAt?: Date;
 };
@@ -91,6 +95,10 @@ export const studentSchema = new Schema<IStudent>({
         type: Schema.Types.ObjectId,
         ref: "Class",
         required: [true, "Class ID is required"]
+    },
+    image: {
+        data: Buffer,
+        contentType: String
     }
 }, {
     timestamps: true,

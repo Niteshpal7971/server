@@ -12,3 +12,4 @@ const blacklistedTokenSchema: Schema<IBlockList> = new mongoose.Schema(
 );
 
 export const BlacklistedToken: Model<IBlockList> = mongoose.model<IBlockList>("BlacklistedToken", blacklistedTokenSchema);
+ 

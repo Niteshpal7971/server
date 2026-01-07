@@ -32,6 +32,7 @@ export interface AuthTokens {
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
+    user: IUser
 }
 
 export interface LoginRequest {
@@ -41,4 +42,17 @@ export interface LoginRequest {
 
 export interface RefreshTokenRequest {
     refreshToken: string;
+}
+
+export interface IRefreshToken {
+    user: string;
+    tokenHash: string;
+    deviceId: string;
+    deviceType: 'WEB' | 'ANDROID';
+    userAgent: string;
+    ipAddress: string;
+    expiresAt: Date;
+    revoked: boolean;
+    replacedByTokenHash?: string;
+    createdAt: Date;
 }
