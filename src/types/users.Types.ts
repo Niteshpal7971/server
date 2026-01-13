@@ -32,7 +32,7 @@ export interface AuthTokens {
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
-    user: IUser
+    user?: IUser
 }
 
 export interface LoginRequest {
