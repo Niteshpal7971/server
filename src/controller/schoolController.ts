@@ -1,6 +1,7 @@
 import { SchoolServices } from "../services/schoolServices";
 import { Request, Response, NextFunction } from "express";
 import { logger } from "../utils/logger";
+import authMiddleware from "../middleware/authMiddleware"
 
 const schoolService = new SchoolServices();
 

@@ -27,7 +27,9 @@ export class AuthController {
             if (!deviceId || !deviceType) {
                 return res.status(400).json({ success: false, message: "deviceId and deviceType are required" });
             }
-
+            console.log("debug", deviceId,
+                deviceType,
+                userAgent, req.body)
             const tokens = await authService.login(req.body, {
                 deviceId,
                 deviceType,
