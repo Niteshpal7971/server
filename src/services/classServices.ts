@@ -37,9 +37,9 @@ export class ClassDatabaseService {
     }
 
 
-    async findAllClass(): Promise<IClass[]> {
+    async findAllClass(schoolId: string): Promise<IClass[]> {
         try {
-            return Class.find();
+            return Class.find({ schoolId });
         } catch (error: any) {
             logger.error("Error updating Class: " + error.message);
             throw new Error("Error updating Class: " + error.message);
@@ -95,8 +95,8 @@ export class ClassServices {
         if (!classId) throw new Error("Class ID is required");
         return await this.classDb.findClassById(classId);
     }
-    async getAll() {
-        return await this.classDb.findAllClass();
+    async getAll(schoolId: string) {
+        return await this.classDb.findAllClass(schoolId);
     }
 
     async update(classId: string, data: Partial<IClass>) {

@@ -21,7 +21,7 @@ router.delete("/delete-school/:id", authenticateToken, school.deleteSchool);
 
 // class Route
 router.post("/:schoolId/create-class", authenticateToken, classController.createClass.bind(classController));
-router.get("/get-classes", authenticateToken, classController.getAllClasses.bind(classController));
+router.get("/:schoolId/get-classes", authenticateToken, classController.getAllClasses.bind(classController));
 router.get("/get-class/:classId", authenticateToken, classController.getClassById.bind(classController));
 router.put("/update-class/:classId", authenticateToken, classController.updateClass.bind(classController));
 router.delete("/delete-class/:classId", authenticateToken, classController.deleteClass.bind(classController));

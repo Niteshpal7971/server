@@ -41,7 +41,7 @@ export class ClassController {
     // Get All Classes
     async getAllClasses(req: Request, res: Response) {
         try {
-            const classes = await this.classService.getAll();
+            const classes = await this.classService.getAll(req.params.schoolId as string);
             return res.status(200).json({ success: true, data: classes });
         } catch (error: any) {
             return res.status(400).json({ success: false, message: error.message });
