@@ -26,6 +26,8 @@ export interface TokenPayload {
     iat: number;
     exp: number;
     jti: string; // JWT ID for blacklisting
+    aud?: string;
+    iss?: string
 }
 
 export interface AuthTokens {

@@ -7,7 +7,7 @@ import { TokenPayload } from "../types/users.Types";
 declare global {
     namespace Express {
         interface Request {
-            USER?: TokenPayload
+            user?: TokenPayload
         }
     }
 }
@@ -15,7 +15,7 @@ declare global {
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
-        const token = authHeader && authHeader.split('')[1];
+        const token = authHeader && authHeader.split(' ')[1];
 
         if (!token) {
             logger.warn("Access token missing in request", {
@@ -28,7 +28,8 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         }
 
         const decode = await JwtUtils.verifyAccessToken(token);
-        req.USER = decode;
+        req.user = decode;
+        next()
     } catch (error: any) {
         logger.error(`authentication error ${error.message}`);
         res.status(403).json({ error: 'Invalid or expired token' });

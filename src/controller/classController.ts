@@ -10,7 +10,13 @@ export class ClassController {
     private studentService = new StudentServices();
     async createClass(req: Request, res: Response) {
         try {
-            const newClass = await this.classService.create(req.params.schoolId as string, req.body);
+            const userId = req.user?.userId
+            const payload = {
+                ...req.body,
+                createdBy: userId
+            }
+
+            const newClass = await this.classService.create(req.params.schoolId as string, payload);
             res.status(201).json({ message: "class created", newClass });
         } catch (error: any) {
             res.status(400).json({ error: error.message });

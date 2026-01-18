@@ -30,7 +30,7 @@ export class Authservice {
         if (!isMatch) throw new Error("Invalid credentials");
 
         // 3. Generate tokens
-        const { accessToken, refreshToken, expiresIn } = TokenUtils.generateTokens({ _id: user._id as string, email: user.email });
+        const { accessToken, refreshToken, expiresIn } = JwtUtils.generateToken(user._id as string, user.email);
 
         // 4. Hash refresh token
         const tokenHash = TokenUtils.hashToken(refreshToken);

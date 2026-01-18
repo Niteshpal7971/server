@@ -7,7 +7,13 @@ const schoolService = new SchoolServices();
 export class SchoolController {
   async createSchool(req: Request, res: Response) {
     try {
-      const school = await schoolService.create(req.body);
+      // console.log("requested user", req.user)
+      const userId = req.user?.userId
+      const payload = {
+        ...req.body,
+        createdBy: userId
+      }
+      const school = await schoolService.create(payload);
       res.status(201).json({ message: "School created", school });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

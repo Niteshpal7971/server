@@ -60,6 +60,7 @@ export class SchoolServices {
     private classServices = new ClassServices()
     private studentServices = new StudentServices()
     async create(schoolData: Partial<ISchool>): Promise<HydratedDocument<ISchool>> {
+        console.log("schoolData", schoolData)
         const { schoolName, address, createdBy } = schoolData;
 
         if (!schoolName || !address || !createdBy) {

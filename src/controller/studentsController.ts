@@ -7,7 +7,8 @@ export class StudentController {
     async createStudent(req: Request, res: Response) {
         try {
             const classId = req.params.id;
-            const studentData = { ...req.body };
+            const studentData = { ...req.body, createdBy: req.user?.userId };
+
 
             if (req.file) {
                 studentData.image = {
