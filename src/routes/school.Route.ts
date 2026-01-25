@@ -32,7 +32,7 @@ router.get("/:classId/export", authenticateToken, classController.exportStudents
 // Student Route
 
 router.post('/:id/create-student', authenticateToken, upload.single('image'), validateFields(createStudentSchema), studentController.createStudent)
-router.get("/students", authenticateToken, studentController.getAllStudents);
+router.get("/students", authenticateToken, studentController.getStudentsByClass);
 router.get("/students/:studentId", authenticateToken, studentController.getStudentById);
 router.put("/students/:studentId", authenticateToken, validateFields(updateStudentSchema), studentController.updateStudent);
 router.delete("/students/:studentId", authenticateToken, studentController.deleteStudent);
