@@ -23,7 +23,7 @@ router.delete("/:id/deleteSchool", authenticateToken, school.deleteSchool);
 router.post("/:schoolId/createClass", authenticateToken, classController.createClass.bind(classController));
 router.get("/:schoolId/getClasses", authenticateToken, classController.getAllClasses.bind(classController));
 router.get("/getClass/:classId", authenticateToken, classController.getClassById.bind(classController));
-router.put("/:classId/updateClass", authenticateToken, classController.updateClass.bind(classController));
+router.patch("/:classId/updateClass", authenticateToken, classController.updateClass.bind(classController));
 router.delete("/:classId/deleteClass", authenticateToken, classController.deleteClass.bind(classController));
 router.post("/:classId/import", authenticateToken, upload.single("file"), classController.importStudents);
 router.get("/:classId/export", authenticateToken, classController.exportStudents);
@@ -34,7 +34,7 @@ router.get("/:classId/export", authenticateToken, classController.exportStudents
 router.post('/:id/createStudent', authenticateToken, upload.single('image'), validateFields(createStudentSchema), studentController.createStudent)
 router.get("/:classId/students", authenticateToken, studentController.getStudentsByClass);
 router.get("/students/:studentId", authenticateToken, studentController.getStudentById);
-router.put("/students/:studentId", authenticateToken, validateFields(updateStudentSchema), studentController.updateStudent);
+router.patch("/students/:studentId", authenticateToken, upload.single('image'), validateFields(updateStudentSchema), studentController.updateStudent);
 router.delete("/students/:studentId", authenticateToken, studentController.deleteStudent);
 
 export default router;
