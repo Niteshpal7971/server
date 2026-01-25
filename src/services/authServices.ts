@@ -42,7 +42,7 @@ export class Authservice {
 
         await RefreshToken.create({
             user: user._id,
-            refreshToken,
+            tokenHash: refreshToken,
             deviceId: deviceInfo.deviceId,
             deviceType: deviceInfo.deviceType,
             userAgent: deviceInfo.userAgent,
