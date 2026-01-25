@@ -22,7 +22,14 @@ export class SchoolController {
 
   async getAllSchools(req: Request, res: Response) {
     try {
-      const schools = await schoolService.getAll();
+      const Id = req.user?.userId
+      if (!Id) {
+        return res
+          .status(404)
+          .json({ message: "No schools are associated with the existing user." });
+      }
+
+      const schools = await schoolService.getAll(Id);
       res.json(schools);
     } catch (error: any) {
       res.status(400).json({ error: error.message });

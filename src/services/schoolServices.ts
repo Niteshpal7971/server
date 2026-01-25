@@ -28,9 +28,9 @@ export class SchoolDatabaseService {
         }
     }
 
-    async getAllSchool(): Promise<HydratedDocument<ISchool>[]> {
+    async getAllSchool(Id: string): Promise<HydratedDocument<ISchool>[]> {
         try {
-            return School.find();
+            return School.find({ createdBy: Id });
         } catch (error: any) {
             logger.error("Error updating school: " + error.message);
             throw new Error("Error updating school: " + error.message);
@@ -75,8 +75,8 @@ export class SchoolServices {
 
         return newSchool;
     }
-    async getAll() {
-        const schools = await this.schoolDb.getAllSchool();
+    async getAll(Id: string) {
+        const schools = await this.schoolDb.getAllSchool(Id);
         for (const school of schools) {
             await school
                 .populate("classes")

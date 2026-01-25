@@ -2,7 +2,7 @@ import { User } from "../model/userModel";
 import { RefreshToken } from "../model/refreshToken.model";
 import { AuthTokens, LoginRequest, IRefreshToken } from "../types/users.Types";
 import { JwtUtils } from "../utils/jwt.utils"; // We might replace this with TokenUtils or use both. Let's use TokenUtils for generation.
-import { TokenUtils } from "../utils/token.utils";
+// import { TokenUtils } from "../utils/token.utils";
 import { logger } from "../utils/logger";
 import { PasswordUtils } from "../utils/password.utils";
 import mongoose from "mongoose";
@@ -33,7 +33,7 @@ export class Authservice {
         const { accessToken, refreshToken, expiresIn } = JwtUtils.generateToken(user._id as string, user.email);
 
         // 4. Hash refresh token
-        const tokenHash = TokenUtils.hashToken(refreshToken);
+        // const tokenHash = TokenUtils.hashToken(refreshToken);
 
         // 5. Store Refresh Token with Device Info
         // Note: Requirements say "one refresh token per device". 
@@ -42,7 +42,7 @@ export class Authservice {
 
         await RefreshToken.create({
             user: user._id,
-            tokenHash,
+            refreshToken,
             deviceId: deviceInfo.deviceId,
             deviceType: deviceInfo.deviceType,
             userAgent: deviceInfo.userAgent,
@@ -58,11 +58,11 @@ export class Authservice {
     }
 
     // Refresh Token (Rotation & Reuse Detection)
-    async refreshToken(rawRefreshToken: string, deviceInfo: Partial<DeviceInfo>): Promise<Partial<AuthTokens>> {
-        const tokenHash = TokenUtils.hashToken(rawRefreshToken);
+    async refreshToken(token: string, deviceInfo: Partial<DeviceInfo>): Promise<Partial<AuthTokens>> {
+        // const tokenHash = TokenUtils.hashToken(rawRefreshToken);
 
         // 1. Try to find the token
-        const existingToken = await RefreshToken.findOne({ tokenHash });
+        const existingToken = await RefreshToken.findOne({ tokenHash: token });
 
         // 2. Scenario: Token Not Found (Could be totally invalid or already rotated and deleted by TTL)
         // However, if we track "replacedBy", we usually keep old tokens for a while.
@@ -86,12 +86,12 @@ export class Authservice {
             // If user sends a completely made up token, we won't find it.
 
             // SO:
-            const revokedToken = await RefreshToken.findOne({ tokenHash, revoked: true }); // Hmm, `tokenHash` is unique. 
+            const revokedToken = await RefreshToken.findOne({ tokenHash: token, revoked: true }); // Hmm, `tokenHash` is unique. 
             // If I do `findOne({ tokenHash })`, I get it regardless of revoked status.
         }
 
         // Refetching with just tokenHash to handle both cases
-        const tokenDoc = await RefreshToken.findOne({ tokenHash });
+        const tokenDoc = await RefreshToken.findOne({ tokenHash: token });
 
         if (!tokenDoc) {
             // If we can't find the token, maybe it was deleted (TTL). 
@@ -127,16 +127,16 @@ export class Authservice {
         // Invalidate (Revoke) the current token
         tokenDoc.revoked = true;
         // Generate NEW tokens
-        const { accessToken, refreshToken: newRefreshToken, expiresIn } = TokenUtils.generateTokens({ _id: user._id as string, email: user.email });
-        const newTokenHash = TokenUtils.hashToken(newRefreshToken);
+        const { accessToken, refreshToken: newRefreshToken, expiresIn } = JwtUtils.generateToken(user._id as string, user.email);
+        // const newTokenHash = TokenUtils.hashToken(newRefreshToken);
 
-        tokenDoc.replacedByTokenHash = newTokenHash;
+        tokenDoc.replacedByTokenHash = newRefreshToken;
         await tokenDoc.save();
 
         // Create NEW RefreshToken record
         await RefreshToken.create({
             user: user._id,
-            tokenHash: newTokenHash,
+            tokenHash: newRefreshToken,
             deviceId: tokenDoc.deviceId, // Bind to same device
             deviceType: tokenDoc.deviceType,
             userAgent: deviceInfo.userAgent || tokenDoc.userAgent,
@@ -149,8 +149,8 @@ export class Authservice {
 
     // Logout (Single Device)
     async logout(refreshToken: string) {
-        const tokenHash = TokenUtils.hashToken(refreshToken);
-        await RefreshToken.deleteOne({ tokenHash });
+        // const tokenHash = TokenUtils.hashToken(refreshToken);
+        await RefreshToken.deleteOne({ tokenHash: refreshToken });
     }
 
     // Logout All Devices
