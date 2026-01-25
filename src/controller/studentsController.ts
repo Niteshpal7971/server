@@ -8,15 +8,12 @@ export class StudentController {
         try {
             const classId = req.params.id;
             const studentData = { ...req.body, createdBy: req.user?.userId };
-
-
             if (req.file) {
                 studentData.image = {
                     data: req.file.buffer,
                     contentType: req.file.mimetype
                 };
             }
-
             const student = await studentService.createStudent(classId || "", studentData);
             res.status(201).json({ message: "Student created", student });
         } catch (error: any) {
