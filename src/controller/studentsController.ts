@@ -26,6 +26,13 @@ export class StudentController {
             const { studentId } = req.params;
             const payload = req.body;
 
+            if (req.file) {
+                payload.image = {
+                    data: req.file.buffer,
+                    contentType: req.file.mimetype
+                };
+            }
+
             const updated = await studentService.updateStudent(studentId as string, payload);
             return res.status(200).json({ success: true, message: "Student updated", data: updated });
         } catch (err: any) {
