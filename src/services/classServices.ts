@@ -2,6 +2,7 @@ import { logger } from "../utils/logger";
 import { Class } from "../model/classModel";
 import { IClass } from "../types/cards.Types";
 import mongoose, { HydratedDocument } from "mongoose";
+import { StudentServices } from "./studentServicces";
 
 export class ClassDatabaseService {
     async createClass(data: Partial<IClass>): Promise<HydratedDocument<IClass>> {
@@ -74,6 +75,7 @@ export class ClassDatabaseService {
 
 export class ClassServices {
     private classDb = new ClassDatabaseService()
+    private studentServices = new StudentServices()
     async create(schoolId: string, classData: Partial<IClass>): Promise<HydratedDocument<IClass>> {
         if (!schoolId) {
             throw new Error("SchoolId is missing")
@@ -106,6 +108,15 @@ export class ClassServices {
     async delete(classId: string) {
         if (!classId) throw new Error("Class ID is required");
         await this.classDb.deleteClass(classId);
+
+        const stu = await this.studentServices.getStudentsByClass(classId);
+        const StuIds = stu.map(c => c._id.toString());
+
+        if (StuIds && StuIds.length > 0) {
+            await this.studentServices.deleteStudentByClass(StuIds);
+        }
+
+
         return { message: "Class deleted successfully" };
     }
     async getClassesBySchool(schoolId: string) {

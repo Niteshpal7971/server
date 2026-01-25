@@ -30,7 +30,7 @@ export class SchoolController {
       }
 
       const schools = await schoolService.getAll(Id);
-      res.json(schools);
+      res.status(200).json(schools);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -40,7 +40,7 @@ export class SchoolController {
     try {
       const school = await schoolService.getById(req.params.id as string);
       if (!school) return res.status(404).json({ error: "School not found" });
-      res.json(school);
+      res.status(200).json(school);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -54,7 +54,7 @@ export class SchoolController {
         req.body
       );
       if (!school) return res.status(404).json({ error: "School not found" });
-      res.json(school);
+      res.status(201).json(school);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -64,7 +64,7 @@ export class SchoolController {
     try {
       const school = await schoolService.delete(req.params.id as string);
       if (!school) return res.status(404).json({ error: "School not found" });
-      res.json({ message: "School deleted successfully", school });
+      res.status(200).json({ message: "School deleted successfully", school });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

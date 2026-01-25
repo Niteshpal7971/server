@@ -122,11 +122,15 @@ export class SchoolServices {
         const classes = await this.classServices.getClassesBySchool(id);
         const classIds = classes.map(c => c._id.toString());
 
-        // 3) Delete all classes
-        await this.classServices.deleteBySchoolId(id);
 
-        // 4) Delete all students of these classIds
-        await this.studentServices.deleteStudentByClass(classIds);
+        if (classIds && classIds.length > 0) {
+            // 3) Delete all classes
+            await this.classServices.deleteBySchoolId(id);
+
+            // 4) Delete all students of these classIds
+            await this.studentServices.deleteStudentByClass(classIds);
+        }
+
 
         return deletedSchool;
     }
