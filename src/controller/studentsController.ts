@@ -1,4 +1,4 @@
-import { StudentServices } from "../services/studentServicces";
+import { StudentServices } from "../services/studentServices";
 import { Request, Response } from "express";
 import { logger } from "../utils/logger";
 

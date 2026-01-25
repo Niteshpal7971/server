@@ -1,25 +1,36 @@
 import { ClassServices } from "../services/classServices";
-import { Request, Response, NextFunction } from "express";
-import { StudentServices } from "../services/studentServicces";
+import { Request, Response } from "express";
+import { StudentServices } from "../services/studentServices";
 import { parse } from "csv-parse";
 import { Readable } from "stream";
-// import { logger } from "../utils/logger";
+import { ApiError } from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
 
 export class ClassController {
     private classService = new ClassServices();
     private studentService = new StudentServices();
+
     async createClass(req: Request, res: Response) {
         try {
-            const userId = req.user?.userId
+            const userId = req.user?.userId;
+            if (!userId) throw new ApiError(401, "Unauthorized");
+
             const payload = {
                 ...req.body,
                 createdBy: userId
-            }
+            };
 
             const newClass = await this.classService.create(req.params.schoolId as string, payload);
-            res.status(201).json({ message: "class created", newClass });
+
+            res.status(201).json(
+                new ApiResponse(201, newClass, "Class created successfully")
+            );
         } catch (error: any) {
-            res.status(400).json({ error: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     }
 
@@ -28,13 +39,15 @@ export class ClassController {
             const { classId } = req.params;
             const classData = await this.classService.getById(classId as string);
 
-            if (!classData) {
-                return res.status(404).json({ success: false, message: "Class not found" });
-            }
-
-            return res.status(200).json({ success: true, data: classData });
+            res.status(200).json(
+                new ApiResponse(200, classData, "Class fetched successfully")
+            );
         } catch (error: any) {
-            return res.status(400).json({ success: false, message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     }
 
@@ -42,9 +55,16 @@ export class ClassController {
     async getAllClasses(req: Request, res: Response) {
         try {
             const classes = await this.classService.getAll(req.params.schoolId as string);
-            return res.status(200).json({ success: true, data: classes });
+
+            res.status(200).json(
+                new ApiResponse(200, classes, "Classes fetched successfully")
+            );
         } catch (error: any) {
-            return res.status(400).json({ success: false, message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     }
 
@@ -52,21 +72,17 @@ export class ClassController {
     async updateClass(req: Request, res: Response) {
         try {
             const { classId } = req.params;
-            const updateData = req.body;
+            const updatedClass = await this.classService.update(classId as string, req.body);
 
-            const updatedClass = await this.classService.update(classId as string, updateData);
-
-            if (!updatedClass) {
-                return res.status(404).json({ success: false, message: "Class not found" });
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: "Class updated successfully",
-                data: updatedClass,
-            });
+            res.status(200).json(
+                new ApiResponse(200, updatedClass, "Class updated successfully")
+            );
         } catch (error: any) {
-            return res.status(400).json({ success: false, message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     }
 
@@ -74,29 +90,31 @@ export class ClassController {
     async deleteClass(req: Request, res: Response) {
         try {
             const { classId } = req.params;
+            const result = await this.classService.delete(classId as string);
 
-            await this.classService.delete(classId as string);
-
-            return res.status(200).json({
-                success: true,
-                message: "Class deleted successfully",
-            });
+            res.status(200).json(
+                new ApiResponse(200, result, "Class deleted successfully")
+            );
         } catch (error: any) {
-            return res.status(400).json({ success: false, message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     }
 
-    // ✅ FIXED: Import Students via Excel
+    // Import Students via Excel
     async importStudents(req: Request, res: Response) {
         try {
             const { classId } = req.params;
 
             if (!classId) {
-                return res.status(400).json({ message: "ClassId is required" });
+                throw new ApiError(400, "ClassId is required");
             }
 
             if (!req.file) {
-                return res.status(400).json({ message: "CSV file is required" });
+                throw new ApiError(400, "CSV file is required");
             }
 
             const students: any[] = [];
@@ -120,43 +138,48 @@ export class ClassController {
             });
 
             if (students.length === 0) {
-                return res.status(400).json({ message: "CSV file is empty" });
+                throw new ApiError(400, "CSV file is empty");
             }
 
-            await this.studentService.bulkAddStudents(classId, students);
+            const result = await this.studentService.bulkAddStudents(classId, students);
 
-            return res.status(201).json({
-                success: true,
-                message: "Students imported successfully",
-                total: students.length
-            });
+            res.status(201).json(
+                new ApiResponse(201, result, "Students imported successfully")
+            );
 
         } catch (error: any) {
-            return res.status(500).json({ message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error",
+                errors: error.errors || []
+            });
         }
     }
 
-    // ✅ Export Students to Excel
+    // Export Students to Excel
     exportStudents = async (req: Request, res: Response) => {
         try {
             const { classId } = req.params;
 
-            const excelBuffer =
-                await this.studentService.exportStudentsToExcel(classId as string);
+            const excelBuffer = await this.studentService.exportStudentsToExcel(classId as string);
 
             res.setHeader(
                 "Content-Disposition",
-                "attachment; filename=students.xlsx"
+                "attachment; filename=students.csv"
             );
             res.setHeader(
                 "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "text/csv"
             );
 
             res.send(excelBuffer);
         } catch (error: any) {
-            res.status(500).json({ success: false, message: error.message });
+            const statusCode = error.statusCode || 500;
+            res.status(statusCode).json({
+                success: false,
+                message: error.message || "Internal Server Error"
+            });
         }
     };
-
 }

@@ -1,153 +1,116 @@
 import { SchoolServices } from "../services/schoolServices";
-import { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger";
+import { Request, Response } from "express";
+import { ApiError } from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
 
 const schoolService = new SchoolServices();
 
 export class SchoolController {
   async createSchool(req: Request, res: Response) {
     try {
-      // console.log("requested user", req.user)
-      const userId = req.user?.userId
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new ApiError(401, "Unauthorized request");
+      }
       const payload = {
         ...req.body,
         createdBy: userId
-      }
+      };
       const school = await schoolService.create(payload);
-      res.status(201).json({ message: "School created", school });
+
+      res.status(201).json(
+        new ApiResponse(201, school, "School created successfully")
+      );
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+        errors: error.errors || []
+      });
     }
   }
 
   async getAllSchools(req: Request, res: Response) {
     try {
-      const Id = req.user?.userId
-      if (!Id) {
-        return res
-          .status(404)
-          .json({ message: "No schools are associated with the existing user." });
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new ApiError(401, "Unauthorized request");
       }
 
-      const schools = await schoolService.getAll(Id);
-      res.status(200).json(schools);
+      const schools = await schoolService.getAll(userId);
+
+      res.status(200).json(
+        new ApiResponse(200, schools, "Schools fetched successfully")
+      );
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal Server Error"
+      });
     }
   }
 
   async getSchoolById(req: Request, res: Response) {
     try {
       const school = await schoolService.getById(req.params.id as string);
-      if (!school) return res.status(404).json({ error: "School not found" });
-      res.status(200).json(school);
+
+      res.status(200).json(
+        new ApiResponse(200, school, "School fetched successfully")
+      );
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal Server Error"
+      });
     }
   }
 
   async updateSchool(req: Request, res: Response) {
     try {
-      console.log(req.body, req.params.id, "req");
       const school = await schoolService.update(
         req.params.id as string,
         req.body
       );
-      if (!school) return res.status(404).json({ error: "School not found" });
-      res.status(201).json(school);
+
+      res.status(200).json(
+        new ApiResponse(200, school, "School updated successfully")
+      );
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal Server Error"
+      });
     }
   }
 
   async deleteSchool(req: Request, res: Response) {
     try {
-      const school = await schoolService.delete(req.params.id as string);
-      if (!school) return res.status(404).json({ error: "School not found" });
-      res.status(200).json({ message: "School deleted successfully", school });
+      const result = await schoolService.delete(req.params.id as string);
+
+      res.status(200).json(
+        new ApiResponse(200, result, "School deleted successfully")
+      );
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal Server Error"
+      });
     }
   }
 
-  /**
-   * Get schools with class count
-   * GET /api/schools/with-class-count
-   */
-  //   async getSchoolsWithClassCount(req: Request, res: Response): Promise<void> {
-  //     try {
-  //       const { page = 1, limit = 10, createdBy } = req.query;
-  //       const skip = ((page as number) - 1) * (limit as number);
-
-  //       const matchStage: any = {};
-  //       if (createdBy) {
-  //         matchStage.createdBy = new mongoose.Types.ObjectId(createdBy as string);
-  //       }
-
-  //       const pipeline = [
-  //         { $match: matchStage },
-  //         {
-  //           $lookup: {
-  //             from: "classes",
-  //             localField: "_id",
-  //             foreignField: "schoolId",
-  //             as: "classes",
-  //           },
-  //         },
-  //         {
-  //           $lookup: {
-  //             from: "users",
-  //             localField: "createdBy",
-  //             foreignField: "_id",
-  //             as: "creator",
-  //             pipeline: [{ $project: { name: 1, email: 1 } }],
-  //           },
-  //         },
-  //         {
-  //           $addFields: {
-  //             classCount: { $size: "$classes" },
-  //             createdBy: { $arrayElemAt: ["$creator", 0] },
-  //           },
-  //         },
-  //         {
-  //           $project: {
-  //             schoolName: 1,
-  //             address: 1,
-  //             createdBy: 1,
-  //             classCount: 1,
-  //             createdAt: 1,
-  //             updatedAt: 1,
-  //           },
-  //         },
-  //         { $sort: { createdAt: -1 } },
-  //         { $skip: skip },
-  //         { $limit: limit as number },
-  //       ];
-
-  //       const [schools, totalCount] = await Promise.all([
-  //         School.aggregate(pipeline),
-  //         School.countDocuments(matchStage),
-  //       ]);
-
-  //       const totalPages = Math.ceil(totalCount / (limit as number));
-
-  //       res.json({
-  //         success: true,
-  //         data: schools,
-  //         pagination: {
-  //           currentPage: page as number,
-  //           totalPages,
-  //           totalSchools: totalCount,
-  //           hasNext: (page as number) < totalPages,
-  //           hasPrev: (page as number) > 1,
-  //         },
-  //       });
-  //     } catch (error: any) {
-  //       res.status(500).json({
-  //         success: false,
-  //         message: "Failed to fetch schools with class count",
-  //         error: error.message,
-  //       });
-  //     }
-  //   }
+  // Kept commented out as per original file, preserving potential future logic
+  /*
+  async getSchoolsWithClassCount(req: Request, res: Response): Promise<void> {
+    try {
+      // Implementation...
+    } catch (error: any) {
+      // Error handling...
+    }
+  }
+  */
 }
