@@ -25,8 +25,8 @@ router.get("/:schoolId/getClasses", authenticateToken, classController.getAllCla
 router.get("/getClass/:classId", authenticateToken, classController.getClassById.bind(classController));
 router.patch("/:classId/updateClass", authenticateToken, classController.updateClass.bind(classController));
 router.delete("/:classId/deleteClass", authenticateToken, classController.deleteClass.bind(classController));
-router.post("/:classId/import", authenticateToken, upload.single("file"), classController.importStudents);
-router.get("/:classId/export", authenticateToken, classController.exportStudents);
+router.post("/:classId/import", authenticateToken, upload.single("file"), classController.importStudents.bind(classController));
+router.get("/:classId/export", authenticateToken, classController.exportStudents.bind(classController));
 
 
 // Student Route
