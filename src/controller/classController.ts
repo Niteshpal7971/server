@@ -105,6 +105,7 @@ export class ClassController {
     }
 
     // Import Students via Excel
+    // Import Students via Excel or CSV
     async importStudents(req: Request, res: Response) {
         try {
             const { classId } = req.params;
@@ -114,31 +115,81 @@ export class ClassController {
             }
 
             if (!req.file) {
-                throw new ApiError(400, "CSV file is required");
+                throw new ApiError(400, "File is required");
             }
 
-            const students: any[] = [];
+            let students: any[] = [];
+            const mimeType = req.file.mimetype;
 
-            await new Promise<void>((resolve, reject) => {
-                Readable.from(req.file!.buffer)
-                    .pipe(
-                        parse({
-                            columns: true,          // first row = headers
-                            skip_empty_lines: true,
-                            trim: true,
-                            relax_quotes: true,
-                            relax_column_count: true,
+            // Handle Excel (.xlsx)
+            if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+                const ExcelJS = require('exceljs');
+                const workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(req.file.buffer);
+
+                const worksheet = workbook.worksheets[0];
+                if (!worksheet) {
+                    throw new ApiError(400, "Excel file is empty or has no sheets");
+                }
+
+                const headers: string[] = [];
+                worksheet.getRow(1).eachCell((cell: any, colNumber: number) => {
+                    if (cell.value) headers[colNumber] = cell.value.toString();
+                });
+
+                worksheet.eachRow((row: any, rowNumber: number) => {
+                    if (rowNumber === 1) return; // Skip header
+
+                    const rowData: any = {};
+                    row.eachCell((cell: any, colNumber: number) => {
+                        const header = headers[colNumber];
+                        if (header) {
+                            // Map values to expected keys if header names differ? 
+                            // Or assume headers match partial IStudent keys (firstName, lastName, etc.)
+                            // For simplicity, let's assume valid headers or mapped in service. 
+                            // But service expects student object keys. 
+                            // Ideally we might want a simple mapper if user uses "First Name" vs "firstName".
+                            // For enterprise system, relying on exact camelCase match is rigid.
+                            // But current CSV import expected csv-parse result which uses headers as keys.
+                            // So we should do the same here.
+
+                            // Let's try to map typical headers to keys if possible, or just use header value as key.
+                            // Let's stick to raw header value for now, assuming user downloads template or matches CSV format.
+                            if (cell.value && typeof cell.value === 'object' && cell.value.text) {
+                                rowData[header] = cell.value.text; // Hyperlinks etc
+                            } else {
+                                rowData[header] = cell.value;
+                            }
+                        }
+                    });
+                    if (Object.keys(rowData).length > 0) {
+                        students.push(rowData);
+                    }
+                });
+
+            } else {
+                // Default to CSV
+                await new Promise<void>((resolve, reject) => {
+                    Readable.from(req.file!.buffer)
+                        .pipe(
+                            parse({
+                                columns: true,          // first row = headers
+                                skip_empty_lines: true,
+                                trim: true,
+                                relax_quotes: true,
+                                relax_column_count: true,
+                            })
+                        )
+                        .on("data", (row) => {
+                            students.push(row);
                         })
-                    )
-                    .on("data", (row) => {
-                        students.push(row);
-                    })
-                    .on("end", () => resolve())
-                    .on("error", (err) => reject(err));
-            });
+                        .on("end", () => resolve())
+                        .on("error", (err) => reject(err));
+                });
+            }
 
             if (students.length === 0) {
-                throw new ApiError(400, "CSV file is empty");
+                throw new ApiError(400, "File is empty or could not be parsed");
             }
 
             const result = await this.studentService.bulkAddStudents(classId, students);
@@ -161,19 +212,33 @@ export class ClassController {
     exportStudents = async (req: Request, res: Response) => {
         try {
             const { classId } = req.params;
+            const { format } = req.query;
 
-            const excelBuffer = await this.studentService.exportStudentsToExcel(classId as string);
+            if (format === 'excel') {
+                const excelBuffer = await this.studentService.exportStudentsToExcel(classId as string);
 
-            res.setHeader(
-                "Content-Disposition",
-                "attachment; filename=students.csv"
-            );
-            res.setHeader(
-                "Content-Type",
-                "text/csv"
-            );
+                res.setHeader(
+                    "Content-Disposition",
+                    "attachment; filename=students.xlsx"
+                );
+                res.setHeader(
+                    "Content-Type",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                );
+                res.send(excelBuffer);
+            } else {
+                const csvBuffer = await this.studentService.exportStudentsToCSV(classId as string);
 
-            res.send(excelBuffer);
+                res.setHeader(
+                    "Content-Disposition",
+                    "attachment; filename=students.csv"
+                );
+                res.setHeader(
+                    "Content-Type",
+                    "text/csv"
+                );
+                res.send(csvBuffer);
+            }
         } catch (error: any) {
             const statusCode = error.statusCode || 500;
             res.status(statusCode).json({

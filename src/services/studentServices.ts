@@ -248,7 +248,8 @@ export class StudentServices {
     }
 
     // Export Excel File
-    async exportStudentsToExcel(classId: string) {
+    // Export CSV Method
+    async exportStudentsToCSV(classId: string) {
         if (!classId) {
             throw new ApiError(400, "Class ID is required");
         }
@@ -275,5 +276,55 @@ export class StudentServices {
         });
 
         return Buffer.from(csv);
+    }
+
+    // Export Excel Method (Real .xlsx)
+    async exportStudentsToExcel(classId: string) {
+        if (!classId) {
+            throw new ApiError(400, "Class ID is required");
+        }
+
+        const students = await this.getStudentsByClass(classId);
+
+        if (!students || students.length === 0) {
+            throw new ApiError(404, "No students found for this class");
+        }
+
+        const ExcelJS = require('exceljs'); // Importing here to avoid global type issues if not fully installed yet or keeping lazy
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Students');
+
+        // Define columns
+        sheet.columns = [
+            { header: 'First Name', key: 'firstName', width: 15 },
+            { header: 'Middle Name', key: 'middleName', width: 15 },
+            { header: 'Last Name', key: 'lastName', width: 15 },
+            { header: 'Roll Number', key: 'rollNumber', width: 15 },
+            { header: 'Age', key: 'age', width: 5 },
+            { header: 'Gender', key: 'gender', width: 10 },
+            { header: 'Guardian Name', key: 'guardianName', width: 20 },
+            { header: 'Contact Number', key: 'contactNumber', width: 15 },
+        ];
+
+        // Add rows
+        students.forEach(st => {
+            sheet.addRow({
+                firstName: st.firstName,
+                middleName: st.middleName || "",
+                lastName: st.lastName,
+                rollNumber: st.rollNumber,
+                age: st.age,
+                gender: st.gender,
+                guardianName: st.guardianName || "",
+                contactNumber: st.contactNumber
+            });
+        });
+
+        // Style the header row
+        sheet.getRow(1).font = { bold: true };
+
+        // Generate buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer;
     }
 }
